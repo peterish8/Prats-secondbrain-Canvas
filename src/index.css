@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/* Smooth transitions for interactive elements */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Strikethrough animation */
+.line-through {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  animation: strikethrough 0.3s ease-in-out;
+}
+
+@keyframes strikethrough {
+  from {
+    text-decoration-color: transparent;
+  }
+  to {
+    text-decoration-color: currentColor;
+  }
+}
+
+/* Edit mode input focus */
+input:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* Smooth canvas transform */
+.canvas-transform {
+  will-change: transform;
+}
+
+/* Prevent text selection during dragging */
+.dragging {
+  user-select: none;
+}
+
+/* Prevent browser-level pinch-to-zoom on the app */
+html, body {
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* Ensure fixed elements are not affected by transforms */
+.fixed {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* Dark Mode Styles */
+:root {
+  --bg-canvas: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-toolbar: rgba(255, 255, 255, 0.95);
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-color: #e2e8f0;
+}
+
+.dark {
+  --bg-canvas: #0f172a;
+  --bg-card: #1e293b;
+  --bg-toolbar: rgba(30, 41, 59, 0.95);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border-color: #334155;
+}
+
+/* Dark mode - Canvas background */
+.dark .min-h-screen {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+}
+
+/* Dark mode - White backgrounds become dark */
+.dark .bg-white {
+  background-color: var(--bg-card) !important;
+}
+
+.dark .bg-white\/90,
+.dark .bg-white\/95 {
+  background-color: var(--bg-toolbar) !important;
+}
+
+/* Dark mode - Text colors */
+.dark .text-slate-800,
+.dark .text-gray-800 {
+  color: #f1f5f9 !important;
+}
+
+.dark .text-slate-700,
+.dark .text-gray-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600,
+.dark .text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500,
+.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400,
+.dark .text-gray-400 {
+  color: #64748b !important;
+}
+
+/* Dark mode - Background colors */
+.dark .bg-slate-50,
+.dark .bg-gray-50 {
+  background-color: #1e293b !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-gray-100 {
+  background-color: #334155 !important;
+}
+
+.dark .bg-slate-200,
+.dark .bg-gray-200 {
+  background-color: #475569 !important;
+}
+
+/* Dark mode - Border colors */
+.dark .border,
+.dark .border-slate-200,
+.dark .border-gray-200 {
+  border-color: #475569 !important;
+}
+
+.dark .border-slate-100,
+.dark .border-gray-100 {
+  border-color: #334155 !important;
+}
+
+.dark .border-slate-300,
+.dark .border-gray-300 {
+  border-color: #64748b !important;
+}
+
+/* Dark mode - Hover states */
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-gray-50:hover {
+  background-color: #334155 !important;
+}
+
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-gray-100:hover {
+  background-color: #475569 !important;
+}
+
+/* Dark mode - Backdrop blur */
+.dark .backdrop-blur,
+.dark .backdrop-blur-sm {
+  backdrop-filter: blur(12px);
+}
+
+/* Dark mode - Shadows */
+.dark .shadow-lg,
+.dark .shadow-xl,
+.dark .shadow-2xl {
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .shadow-sm,
+.dark .shadow-md,
+.dark .shadow {
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Dark mode - Task cards keep their colors but with adjusted opacity */
+.dark .bg-rose-100,
+.dark .bg-orange-100,
+.dark .bg-amber-100,
+.dark .bg-lime-100,
+.dark .bg-emerald-100,
+.dark .bg-cyan-100,
+.dark .bg-violet-100,
+.dark .bg-pink-100,
+.dark .bg-indigo-100 {
+  opacity: 0.9;
+}
+
+/* Dark mode - Inputs */
+.dark input,
+.dark textarea {
+  background-color: #1e293b !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* Dark mode - Scrollbar */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
