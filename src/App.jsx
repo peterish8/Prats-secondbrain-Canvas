@@ -582,30 +582,42 @@ const NotebookSidebar = ({ notebooks, activeNotebookId, onSelect, onCreate, onRe
                     </button>
                     
                     {showActions === nb.id && (
-                      <div className="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-xl border py-1 w-32 z-50">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditName(nb.name);
-                            setEditingId(nb.id);
-                            setShowActions(null);
-                          }}
-                          className="w-full px-3 py-2 text-left text-sm hover:bg-slate-50 text-slate-700"
-                        >
-                          Rename
-                        </button>
-                        {notebooks.length > 1 && (
-                          <button 
+                      <div className="absolute right-0 top-full mt-1 pt-1 z-50">
+                        <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden w-40">
+                          <div 
                             onClick={(e) => {
                               e.stopPropagation();
-                              onDelete(nb.id);
+                              setEditName(nb.name);
+                              setEditingId(nb.id);
                               setShowActions(null);
                             }}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600"
+                            className="p-3 hover:bg-indigo-50 flex items-center gap-3 border-b border-slate-50 transition-colors cursor-pointer"
                           >
-                            Delete
-                          </button>
-                        )}
+                            <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg">
+                              <Edit3 size={14} />
+                            </div>
+                            <div>
+                              <div className="text-sm font-semibold text-slate-700">Rename</div>
+                            </div>
+                          </div>
+                          {notebooks.length > 1 && (
+                            <div 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onDelete(nb.id);
+                                setShowActions(null);
+                              }}
+                              className="p-3 hover:bg-red-50 flex items-center gap-3 transition-colors cursor-pointer"
+                            >
+                              <div className="p-1.5 bg-red-100 text-red-600 rounded-lg">
+                                <Trash2 size={14} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-red-600">Delete</div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2146,8 +2158,79 @@ export default function App() {
     setDeleteConfirm({ isOpen: false, taskId: null, taskTitle: '' });
   };
 
+
   const cancelDeleteTask = () => {
     setDeleteConfirm({ isOpen: false, taskId: null, taskTitle: '' });
+  };
+
+  // --- Collision Detection Helper ---
+  // Finds an empty position on canvas that doesn't overlap with existing tasks/sections
+  const findEmptyPosition = (existingTasks, existingSections, numNewTasks) => {
+    const TASK_WIDTH = 300;
+    const TASK_HEIGHT = 200;
+    const GAP = 50;
+    const START_X = 100;
+    const START_Y = 100;
+    const COLS = 3;
+    
+    // Calculate bounding boxes of all existing items
+    const existingBoxes = [
+      ...existingTasks.filter(t => t.status === 'active').map(t => ({
+        x: t.x,
+        y: t.y,
+        width: TASK_WIDTH,
+        height: TASK_HEIGHT
+      })),
+      ...existingSections.map(s => ({
+        x: s.x,
+        y: s.y,
+        width: s.width,
+        height: s.height
+      }))
+    ];
+    
+    // Check if a position collides with any existing box
+    const collides = (x, y, width, height) => {
+      return existingBoxes.some(box => {
+        return !(x + width < box.x || 
+                 x > box.x + box.width || 
+                 y + height < box.y || 
+                 y > box.y + box.height);
+      });
+    };
+    
+    // Find max Y of existing items to start below them
+    let startY = START_Y;
+    if (existingBoxes.length > 0) {
+      const maxY = Math.max(...existingBoxes.map(b => b.y + b.height));
+      startY = maxY + GAP * 2;
+    }
+    
+    // Generate positions for new tasks in a grid, checking for collisions
+    const positions = [];
+    let currentY = startY;
+    let attempts = 0;
+    const maxAttempts = 100;
+    
+    for (let i = 0; i < numNewTasks && attempts < maxAttempts; i++) {
+      const col = i % COLS;
+      const row = Math.floor(i / COLS);
+      let x = START_X + col * (TASK_WIDTH + GAP);
+      let y = currentY + row * (TASK_HEIGHT + GAP);
+      
+      // Check for collision and adjust if needed
+      while (collides(x, y, TASK_WIDTH, TASK_HEIGHT) && attempts < maxAttempts) {
+        y += TASK_HEIGHT + GAP;
+        attempts++;
+      }
+      
+      positions.push({ x, y });
+      
+      // Add this position to existing boxes to avoid self-collision
+      existingBoxes.push({ x, y, width: TASK_WIDTH, height: TASK_HEIGHT });
+    }
+    
+    return positions;
   };
 
   // --- Logic-Based Task Generation ---
@@ -2208,9 +2291,13 @@ export default function App() {
       throw new Error('No modules found! Make sure your text follows the format:\n\nModule 1: Title\n● Item 1\n● Item 2');
     }
 
-    // Create tasks from parsed modules
+    // Get positions that don't overlap with existing items
+    const positions = findEmptyPosition(tasks, sections, modules.length);
+
+    // Create tasks from parsed modules with collision-free positions
     const newTasks = modules.map((module, index) => {
       const taskId = `logic-${Date.now()}-${index}`;
+      const pos = positions[index] || { x: 100 + (index % 3) * 350, y: 100 + Math.floor(index / 3) * 350 };
       return {
         id: taskId,
         title: module.title,
@@ -2219,8 +2306,8 @@ export default function App() {
           text: item,
           strikethrough: false
         })),
-        x: 100 + (index % 3) * 350,
-        y: 100 + Math.floor(index / 3) * 350,
+        x: pos.x,
+        y: pos.y,
         color: colors[index % colors.length],
         status: 'active'
       };
@@ -2228,10 +2315,12 @@ export default function App() {
 
     setTasks(prev => [...prev, ...newTasks]);
 
-    // Create a label
+    // Create a label - use first line of input as subject name
+    const firstLine = syllabusText.split('\n').find(line => line.trim().length > 0 && !line.trim().match(/^(Module|●|•|-|\*)/i)) || `${modules.length} Tasks Created`;
+    const subjectName = firstLine.trim().slice(0, 60); // Limit length for display
     const newLabel = {
       id: `label-logic-${Date.now()}`,
-      text: `${modules.length} Tasks Created`,
+      text: subjectName,
       x: 50,
       y: 50
     };
@@ -2286,9 +2375,13 @@ ${syllabusText}`;
         throw new Error('Invalid response format from AI');
       }
 
-      // Create tasks from AI response
+      // Get positions that don't overlap with existing items
+      const positions = findEmptyPosition(tasks, sections, data.tasks.length);
+
+      // Create tasks from AI response with collision-free positions
       const newTasks = data.tasks.map((taskData, index) => {
         const taskId = `ai-${Date.now()}-${index}`;
+        const pos = positions[index] || { x: 100 + (index % 3) * 350, y: 100 + Math.floor(index / 3) * 350 };
         return {
           id: taskId,
           title: taskData.title,
@@ -2297,8 +2390,8 @@ ${syllabusText}`;
             text: item,
             strikethrough: false
           })),
-          x: 100 + (index % 3) * 350,
-          y: 100 + Math.floor(index / 3) * 350,
+          x: pos.x,
+          y: pos.y,
           color: taskData.color || 'bg-white border-slate-300',
           status: 'active'
         };
@@ -2306,10 +2399,12 @@ ${syllabusText}`;
 
       setTasks(prev => [...prev, ...newTasks]);
 
-      // Create a label for the generation
+      // Create a label for the generation - use first line of syllabus as subject name
+      const firstLine = syllabusText.split('\n').find(line => line.trim().length > 0) || 'AI Generated Tasks';
+      const subjectName = firstLine.trim().slice(0, 60); // Limit length for display
       const newLabel = {
         id: `label-ai-${Date.now()}`,
-        text: 'AI Generated Tasks',
+        text: subjectName,
         x: 50,
         y: 50
       };
@@ -3420,56 +3515,61 @@ ${syllabusText}`;
             {/* Tools - Collapsible */}
             <div className={`flex items-center gap-2 overflow-visible transition-all duration-500 ease-in-out ${toolbarCollapsed ? 'max-w-0 opacity-0 p-0' : 'max-w-[500px] opacity-100 p-1'}`}>
               {/* Create Split-Button: Main click = AI, Arrow hover = Dropdown */}
-              <div className="relative flex items-center bg-gradient-to-r from-purple-600 via-pink-600 to-pink-700 rounded-full overflow-hidden shadow-lg">
-                {/* Main Button - Click opens AI modal directly */}
-                <button 
-                    onClick={() => { setAiModalMode('ai'); setShowAIModal(true); }}
-                    className="text-white px-3 py-2 flex items-center gap-1.5 hover:bg-white/10 transition-colors text-xs"
-                    title="Create with AI"
-                >
-                    <Sparkles size={14} />
-                    <span className="font-semibold hidden sm:inline">Create</span>
-                </button>
-                {/* Divider line */}
-                <div className="w-px h-5 bg-white/30" />
-                {/* Arrow Button - Hover shows dropdown */}
-                <div className="relative group">
+              <div className="relative" 
+                   onMouseLeave={() => setShowCreateDropdown(false)}>
+                {/* Button Container - pill shape */}
+                <div className="flex items-center bg-gradient-to-r from-purple-600 via-pink-600 to-pink-700 rounded-full overflow-hidden shadow-lg">
+                  {/* Main Button - Click opens AI modal directly */}
+                  <button 
+                      onClick={() => { setAiModalMode('ai'); setShowAIModal(true); }}
+                      className="text-white px-3 py-2 flex items-center gap-1.5 hover:bg-white/10 transition-colors text-xs"
+                      title="Create with AI"
+                  >
+                      <Sparkles size={14} />
+                      <span className="font-semibold hidden sm:inline">Create</span>
+                  </button>
+                  {/* Divider line */}
+                  <div className="w-px h-5 bg-white/30" />
+                  {/* Arrow Button - Hover triggers dropdown */}
                   <button 
                       className="text-white px-2 py-2 flex items-center hover:bg-white/10 transition-colors"
                       title="More options"
+                      onMouseEnter={() => setShowCreateDropdown(true)}
                   >
                       <ChevronDown size={14} className="opacity-90" />
                   </button>
-                  {/* Hover bridge */}
-                  <div className="absolute top-full right-0 h-2 w-48 group-hover:block hidden" />
-                  {/* Dropdown on hover */}
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden transform scale-95 opacity-0 group-hover:scale-100 group-hover:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-all origin-top-right z-50">
-                      <div 
-                          onClick={() => { setAiModalMode('logic'); setShowAIModal(true); }}
-                          className="p-3 hover:bg-indigo-50 flex items-center gap-3 border-b border-slate-50 transition-colors cursor-pointer"
-                      >
-                          <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                              <Sparkles size={16} />
-                          </div>
-                          <div>
-                              <div className="text-sm font-bold text-slate-700">Logic Create</div>
-                              <div className="text-[10px] text-slate-500">Auto-breakdown tasks</div>
-                          </div>
-                      </div>
-                      <div 
-                          onClick={() => { setAiModalMode('ai'); setShowAIModal(true); }}
-                          className="p-3 hover:bg-pink-50 flex items-center gap-3 transition-colors cursor-pointer"
-                      >
-                          <div className="p-2 bg-pink-100 text-pink-600 rounded-lg">
-                              <Wand2 size={16} />
-                          </div>
-                          <div>
-                              <div className="text-sm font-bold text-slate-700">AI Create</div>
-                              <div className="text-[10px] text-slate-500">Generative task list</div>
-                          </div>
-                      </div>
-                  </div>
                 </div>
+                {/* Dropdown - Outside the overflow-hidden container */}
+                {showCreateDropdown && (
+                  <div className="absolute top-full right-0 pt-1 w-48 z-50">
+                    <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div 
+                        onClick={() => { setAiModalMode('logic'); setShowAIModal(true); setShowCreateDropdown(false); }}
+                        className="p-3 hover:bg-indigo-50 flex items-center gap-3 border-b border-slate-50 transition-colors cursor-pointer"
+                    >
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                            <Sparkles size={16} />
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold text-slate-700">Logic Create</div>
+                            <div className="text-[10px] text-slate-500">Auto-breakdown tasks</div>
+                        </div>
+                    </div>
+                    <div 
+                        onClick={() => { setAiModalMode('ai'); setShowAIModal(true); setShowCreateDropdown(false); }}
+                        className="p-3 hover:bg-pink-50 flex items-center gap-3 transition-colors cursor-pointer"
+                    >
+                        <div className="p-2 bg-pink-100 text-pink-600 rounded-lg">
+                            <Wand2 size={16} />
+                        </div>
+                        <div>
+                            <div className="text-sm font-bold text-slate-700">AI Create</div>
+                            <div className="text-[10px] text-slate-500">Generative task list</div>
+                        </div>
+                    </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Divider */}
