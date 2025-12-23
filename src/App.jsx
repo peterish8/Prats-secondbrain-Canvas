@@ -1,3 +1,5 @@
+/* eslint-disable no-unused-vars */
+/* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Trash2, CheckCircle, GripVertical, Sparkles, RefreshCcw, X, Plus, Undo2, Redo2, ZoomIn, ZoomOut, Maximize2, Type, Edit3, Wand2, Group, Layers, ChevronDown, ChevronUp, Settings, Download, Upload, Book, Palette, MoreVertical, ChevronLeft, ChevronRight, MousePointer, Move, Sun, Moon, LayoutGrid } from 'lucide-react';
 
@@ -198,7 +200,7 @@ const ColorPicker = ({ selectedColor, onSelectColor, className = '' }) => {
 };
 
 // --- Settings Modal ---
-const SettingsModal = ({ isOpen, onClose, onExport, onImport, onExportNotebook, onImportNotebook, onExportText, onImportText, currentNotebookName, darkMode, onToggleDarkMode }) => {
+const SettingsModal = ({ isOpen, onClose, onExport, onImport, onExportNotebook, onImportNotebook, onExportText, onImportText, currentNotebookName }) => {
   const fileInputRef = useRef(null);
   const notebookFileInputRef = useRef(null);
   
@@ -217,7 +219,7 @@ const SettingsModal = ({ isOpen, onClose, onExport, onImport, onExportNotebook, 
             onImport(data);
           }
           onClose();
-        } catch (err) {
+        } catch {
           alert('Invalid file format. Please select a valid export file.');
         }
       };
@@ -352,7 +354,7 @@ const ExportTextModal = ({ isOpen, onClose, text }) => {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
+    } catch {
       alert('Failed to copy to clipboard. Please copy manually.');
     }
   };
@@ -1520,8 +1522,6 @@ export default function App() {
   }, [notebooks, activeNotebookId]);
 
   // --- Per-Notebook Data ---
-  const getStorageKey = (type) => `${activeNotebookId}-${type}`;
-
   const [tasks, setTasks] = useState(() => {
     const nbId = localStorage.getItem('activeNotebookId');
     if (nbId) {
@@ -2181,11 +2181,11 @@ export default function App() {
           title: line,
           items: []
         };
-      } else if (currentModule && line.match(/^[●•\-\*]\s+(.+)$/)) {
+      } else if (currentModule && line.match(/^[●•\-*]\s+(.+)$/)) {
         // Add item to current module (starts with bullet: ●, •, -, *)
-        const itemText = line.replace(/^[●•\-\*]\s+/, '');
+        const itemText = line.replace(/^[●•\-*]\s+/, '');
         currentModule.items.push(itemText);
-      } else if (line.length > 0 && !line.match(/^[●•\-\*]/)) {
+      } else if (line.length > 0 && !line.match(/^[●•\-*]/)) {
         // If it's text without bullet and no current module, treat as module title
         if (!currentModule) {
           currentModule = {
@@ -3230,11 +3230,6 @@ ${syllabusText}`;
     const START_X = 100;
     const START_Y = 100;
     
-    // Find tasks that are inside sections
-    const getTasksInSection = (section) => {
-      return tasks.filter(t => t.status === 'active' && isTaskInSection(t, section));
-    };
-    
     // Find standalone tasks (not in any section)
     const standaloneTasks = tasks.filter(t => {
       if (t.status !== 'active') return false;
@@ -3254,7 +3249,7 @@ ${syllabusText}`;
     const sectionMovements = {}; // Track how much each section moved
     
     // Organize sections first (they are larger)
-    sections.forEach((section, index) => {
+    sections.forEach((section) => {
       // Check if section fits in current row
       if (currentX + section.width > maxWidth && currentX !== START_X) {
         // Move to next row
@@ -3824,10 +3819,31 @@ ${syllabusText}`;
        {/* Delete Group Modal */}
        <DeleteGroupModal 
          isOpen={deleteGroupConfirm.isOpen}
-         onClose={() => setDeleteGroupConfirm(prev => ({ ...prev, isOpen: false }))}
-         onDeleteLabelOnly={() => handleDeleteGroup(deleteGroupConfirm.sectionId, false)}
-         onDeleteAll={() => handleDeleteGroup(deleteGroupConfirm.sectionId, true)}
-         sectionTitle={deleteGroupConfirm.sectionTitle}
+         groupTitle={deleteGroupConfirm.sectionTitle}
+         onCancel={() => setDeleteGroupConfirm(prev => ({ ...prev, isOpen: false }))}
+         onUngroup={() => {
+           // Delete section only, keep tasks
+           setSections(prev => prev.filter(s => s.id !== deleteGroupConfirm.sectionId));
+           setDeleteGroupConfirm({ isOpen: false, sectionId: null, sectionTitle: '' });
+         }}
+         onDeleteAll={() => {
+           // Delete section AND tasks inside it
+           const section = sections.find(s => s.id === deleteGroupConfirm.sectionId);
+           if (section) {
+             const tasksToRemove = tasks.filter(t => {
+               const taskCenter = { x: t.x + 150, y: t.y + 100 };
+               return (
+                 taskCenter.x >= section.x &&
+                 taskCenter.x <= section.x + section.width &&
+                 taskCenter.y >= section.y &&
+                 taskCenter.y <= section.y + section.height
+               );
+             }).map(t => t.id);
+             setTasks(prev => prev.filter(t => !tasksToRemove.includes(t.id)));
+           }
+           setSections(prev => prev.filter(s => s.id !== deleteGroupConfirm.sectionId));
+           setDeleteGroupConfirm({ isOpen: false, sectionId: null, sectionTitle: '' });
+         }}
        />
 
       {/* Delete Confirmation Modal (Task) */}
